@@ -2,10 +2,19 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CategoryController;
 
 Route::get('/', function () {
     return view('starter');
 });
+
+// Category Routes
+Route::get('/category', [CategoryController::class, 'index'])->name('category.index');
+Route::get('/category/create', [CategoryController::class, 'create'])->name('category.create');
+Route::post('/category/create', [CategoryController::class, 'store'])->name('category.store');
+Route::get('/category/{category}/edit', [CategoryController::class, 'edit'])->name('category.edit');
+Route::put('/category/{category}/edit', [CategoryController::class, 'update'])->name('category.update');
+Route::delete('/category/{category}/delete', [CategoryController::class, 'destroy'])->name('category.delete');
 
 Route::get('/dashboard', function () {
     return view('dashboard');
