@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Book;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class BookController extends Controller
 {
@@ -13,8 +14,10 @@ class BookController extends Controller
      */
     public function index()
     {
-        $books = Book::all();
-        return view('books.index', compact('books'));
+        // bukan memakai Book::all, untuk menghindari N+1 query problem.
+        // Jika tabel Author direalisasikan, relasi menggunakan array '[ ]'
+        $books = Book::with('category')->get();
+        return view('book.index', compact('books'));
     }
 
     /**
@@ -23,7 +26,7 @@ class BookController extends Controller
     public function create()
     {
         $categories = Category::all();
-        return view('books.create', compact('categories'));
+        return view('book.create', compact('categories'));
     }
 
     /**
@@ -31,7 +34,21 @@ class BookController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validatedData = $request->validate([
+            'isbn' => 'required|string|unique:book',
+            'title' => 'required|string|max:100',
+            'author' => 'required|string|max:100',
+            'description' => 'nullable|string|max:300',
+            'publish_year' => 'required|integer',
+            'category_id' => 'required|integer|exists:categories,id',
+            'cover' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+        if ($request->hasFile('cover')) {
+            $validatedData['cover'] = $validatedData['isbn'] . '.' . $request->file('cover')->getClientOriginalExtension();
+            $request->file('cover')->storeAs('uploads', $validatedData['cover'], 'public'); // method move dipakai utk import data, tapi kita biasanya pakai storeAs agar lebih aman. Jangan lupa kalau pake method move, dihapus filenya
+        }
+        Book::create($validatedData);
+        return redirect()->route('book.index')->with('success', 'Book created successfully.');
     }
 
     /**
@@ -55,7 +72,23 @@ class BookController extends Controller
      */
     public function update(Request $request, Book $book)
     {
-        //
+        $validatedData = $request->validate([
+            'title' => 'required|string|max:100',
+            'author' => 'required|string|max:100',
+            'description' => 'nullable|string|max:300',
+            'publish_year' => 'required|integer',
+            'category_id' => 'required|integer|exists:categories,id',
+            'cover' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+        if ($request->hasFile('cover')) {
+            if ($book->cover) {
+                Storage::disk('public')->delete('uploads/' . $book->cover);
+            }
+            $validatedData['cover'] = $validatedData['isbn'] . '.' . $request->file('cover')->getClientOriginalExtension();
+            $request->file('cover')->storeAs('uploads', $validatedData['cover'], 'public'); // method move dipakai utk import data, tapi kita biasanya pakai storeAs agar lebih aman. Jangan lupa kalau pake method move, dihapus filenya
+        }
+        Book::create($validatedData);
+        return redirect()->route('book.index')->with('success', 'Book updated successfully.');
     }
 
     /**
